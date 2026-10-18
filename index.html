@@ -7,7 +7,7 @@
 <script>
 const c=document.getElementById('game'),x=c.getContext('2d'),scoreEl=document.getElementById('score'),lifeEl=document.getElementById('life'),bestEl=document.getElementById('best'),statusEl=document.getElementById('status'),start=document.getElementById('start');
 const soundButton=document.getElementById('sound');
-let soundEnabled=true,audioCtx=null,musicTimer=null,musicStep=0;
+let soundEnabled=true,audioCtx=null,musicTimer=null,musicStep=0,endingVoices=[];
 const AudioContextClass=window.AudioContext||window.webkitAudioContext;
 // Original NES-inspired chiptune: melody, counter-melody, bass, and percussion.
 // Tempo rises with elapsed game time, like the monsters' speed.
@@ -23,6 +23,7 @@ function tone(midi,at,duration,volume,type='square'){
  gain.gain.exponentialRampToValueAtTime(volume,at+.008);
  gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(at);osc.stop(at+duration+.02);
+ return osc;
 }
 function beat(){
  if(!running||!soundEnabled||!audioCtx)return;
@@ -37,8 +38,35 @@ function beat(){
  musicTimer=setTimeout(beat,musicDelay());
 }
 function stopMusic(){if(musicTimer!==null){clearTimeout(musicTimer);musicTimer=null}}
+// Original game-over jingle: melodramatic minor fall, haunted wobble,
+// then a playful, clumsy arcade-style two-note punchline.
+// All notes are synthesized; no copyrighted game audio is sampled.
+function stopEnding(){
+ for(const osc of endingVoices){try{osc.stop()}catch(e){}}
+ endingVoices=[];
+}
+function playGameOverMusic(){
+ stopEnding();
+ if(!soundEnabled||!audioCtx)return;
+ const startAt=audioCtx.currentTime+.045;
+ // [time offset in seconds, MIDI pitch, duration, loudness, waveform]
+ const ending=[
+  [0,76,.32,.055,'square'],[.26,72,.3,.052,'square'],
+  [.51,69,.36,.055,'square'],[.82,65,.44,.055,'square'],
+  [1.20,64,.55,.052,'square'],[1.22,40,.6,.08,'triangle'],
+  [1.73,63,.22,.04,'square'],[1.94,62,.55,.05,'square'],
+  [2.05,38,.55,.065,'triangle'],
+  [2.58,74,.13,.048,'square'],[2.76,69,.13,.048,'square'],
+  [2.95,70,.32,.055,'square'],[2.95,46,.4,.065,'triangle'],
+  [3.35,67,.16,.037,'square'],[3.56,60,.48,.048,'square']
+ ];
+ for(const [offset,pitch,duration,volume,wave] of ending){
+  const osc=tone(pitch,startAt+offset,duration,volume,wave);
+  if(osc)endingVoices.push(osc);
+ }
+}
 function startMusic(){
- stopMusic();
+ stopEnding();stopMusic();
  if(!soundEnabled||!AudioContextClass)return;
  try{
   if(!audioCtx)audioCtx=new AudioContextClass();
@@ -51,7 +79,7 @@ soundButton.onclick=()=>{
  soundEnabled=!soundEnabled;
  soundButton.textContent=soundEnabled?'♫ Звук: вкл':'♫ Звук: выкл';
  soundButton.setAttribute('aria-pressed',String(soundEnabled));
- if(soundEnabled&&running)startMusic();else stopMusic();
+ if(soundEnabled&&running)startMusic();else {stopMusic();stopEnding();}
 };
 let monsters=[],score=0,lives=3,running=false,last=0,spawn=0,elapsed=0,best=Number(localStorage.getItem('monsterBest')||0);bestEl.textContent=best;
 // Three original enemy silhouettes based on the submitted pencil sketches.
@@ -92,7 +120,7 @@ function draw(){
   x.drawImage(img,Math.round(m.x-size/2),Math.round(m.y-size/2),Math.round(size),Math.round(size));
  }
 }
-function tick(t){if(!running)return;let dt=Math.min((t-last)/1000,.05);last=t;elapsed+=dt;spawn+=dt;if(spawn>Math.max(.42,1.2-elapsed*.01)){spawn=0;add()}for(const m of monsters)m.y-=m.v*dt;let missed=monsters.filter(m=>m.y+m.r<0).length;if(missed){lives=Math.max(0,lives-missed);lifeEl.textContent=lives;monsters=monsters.filter(m=>m.y+m.r>=0)}draw();if(!lives){running=false;stopMusic();statusEl.textContent='Игра окончена! Очки: '+score;start.hidden=false;start.textContent='Играть снова';return}requestAnimationFrame(tick)}
+function tick(t){if(!running)return;let dt=Math.min((t-last)/1000,.05);last=t;elapsed+=dt;spawn+=dt;if(spawn>Math.max(.42,1.2-elapsed*.01)){spawn=0;add()}for(const m of monsters)m.y-=m.v*dt;let missed=monsters.filter(m=>m.y+m.r<0).length;if(missed){lives=Math.max(0,lives-missed);lifeEl.textContent=lives;monsters=monsters.filter(m=>m.y+m.r>=0)}draw();if(!lives){running=false;stopMusic();playGameOverMusic();statusEl.textContent='Игра окончена! Очки: '+score;start.hidden=false;start.textContent='Играть снова';return}requestAnimationFrame(tick)}
 c.addEventListener('dblclick',e=>e.preventDefault());
 c.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
 c.addEventListener('pointerdown',e=>{if(!running)return;let r=c.getBoundingClientRect(),px=(e.clientX-r.left)*900/r.width,py=(e.clientY-r.top)*500/r.height;for(let i=monsters.length-1;i>=0;i--){let m=monsters[i];if(Math.hypot(m.x-px,m.y-py)<m.r+10){monsters.splice(i,1);score+=10;scoreEl.textContent=score;if(score>best){best=score;bestEl.textContent=best;localStorage.setItem('monsterBest',best)}draw();break}}});
