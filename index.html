@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monster Shooter</title>
+<style>body{margin:0;background:#090d20;color:white;font-family:system-ui;text-align:center}h1{color:#7ef4ff}canvas{width:min(96vw,900px);height:auto;background:#111a34;border:2px solid #4b638d;border-radius:15px;touch-action:none}button{padding:14px 32px;background:#7ef4ff;border:0;border-radius:12px;font-weight:bold;font-size:18px}p{color:#b8c9e7}</style>
+<h1>👾 MONSTER SHOOTER</h1><h2>Очки: <span id="score">0</span> | Жизни: <span id="life">3</span> | Рекорд: <span id="best">0</span></h2>
+<canvas id="game" width="900" height="500"></canvas><p id="status">Стреляй по монстрам, пока они не убежали!</p><button id="start">Играть</button>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d'),scoreEl=document.getElementById('score'),lifeEl=document.getElementById('life'),bestEl=document.getElementById('best'),statusEl=document.getElementById('status'),start=document.getElementById('start');
+let monsters=[],score=0,lives=3,running=false,last=0,spawn=0,elapsed=0,best=Number(localStorage.getItem('monsterBest')||0);bestEl.textContent=best;
+function add(){monsters.push({x:40+Math.random()*820,y:540,r:22+Math.random()*14,v:75+Math.min(elapsed*2,110),color:['#f75ba9','#6cf6ff','#baff65','#b995ff'][Math.floor(Math.random()*4)]})}
+function draw(){x.clearRect(0,0,900,500);x.strokeStyle='#233257';for(let i=0;i<900;i+=50){x.beginPath();x.moveTo(i,0);x.lineTo(i,500);x.stroke()}for(const m of monsters){x.fillStyle=m.color;x.shadowColor=m.color;x.shadowBlur=18;x.beginPath();x.arc(m.x,m.y,m.r,0,7);x.fill();x.shadowBlur=0;x.fillStyle='#0b1020';x.beginPath();x.arc(m.x-m.r*.3,m.y-5,4,0,7);x.arc(m.x+m.r*.3,m.y-5,4,0,7);x.fill();x.beginPath();x.arc(m.x,m.y+6,7,0,Math.PI);x.strokeStyle='#0b1020';x.lineWidth=3;x.stroke()}}
+function tick(t){if(!running)return;let dt=Math.min((t-last)/1000,.05);last=t;elapsed+=dt;spawn+=dt;if(spawn>Math.max(.42,1.2-elapsed*.01)){spawn=0;add()}for(const m of monsters)m.y-=m.v*dt;let missed=monsters.filter(m=>m.y+m.r<0).length;if(missed){lives=Math.max(0,lives-missed);lifeEl.textContent=lives;monsters=monsters.filter(m=>m.y+m.r>=0)}draw();if(!lives){running=false;statusEl.textContent='Игра окончена! Очки: '+score;start.hidden=false;start.textContent='Играть снова';return}requestAnimationFrame(tick)}
+c.addEventListener('pointerdown',e=>{if(!running)return;let r=c.getBoundingClientRect(),px=(e.clientX-r.left)*900/r.width,py=(e.clientY-r.top)*500/r.height;for(let i=monsters.length-1;i>=0;i--){let m=monsters[i];if(Math.hypot(m.x-px,m.y-py)<m.r+10){monsters.splice(i,1);score+=10;scoreEl.textContent=score;if(score>best){best=score;bestEl.textContent=best;localStorage.setItem('monsterBest',best)}draw();break}}});
+start.onclick=()=>{score=0;lives=3;elapsed=0;spawn=0;monsters=[];scoreEl.textContent=0;lifeEl.textContent=3;statusEl.textContent='Лови монстров!';start.hidden=true;running=true;last=performance.now();requestAnimationFrame(tick)};draw();
+</script>
