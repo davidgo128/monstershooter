@@ -90,3 +90,23 @@ test('game canvas suppresses double-click zoom and touch action', async ({ page 
     return event.defaultPrevented;
   })).toBe(true);
 });
+
+test('game over plays tragic comic chiptune; restart cuts it off', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /играть/i }).click();
+  await page.evaluate(() => { monsters = Array.from({length:3},()=>({x:450,y:-100,r:25,v:75,kind:0})); });
+  await expect(page.locator('#life')).toHaveText('0');
+  await expect.poll(() => page.evaluate(() => endingVoices.length)).toBeGreaterThan(10);
+  await page.getByRole('button', { name: /играть снова/i }).click();
+  expect(await page.evaluate(() => endingVoices.length)).toBe(0);
+});
+
+test('muting during game over stops the ending song', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /играть/i }).click();
+  await page.evaluate(() => { monsters = Array.from({length:3},()=>({x:450,y:-100,r:25,v:75,kind:0})); });
+  await expect(page.locator('#life')).toHaveText('0');
+  await page.getByRole('button', { name: /звук/i }).click();
+  expect(await page.evaluate(() => endingVoices.length)).toBe(0);
+  await expect(page.locator('#sound')).toHaveAttribute('aria-pressed','false');
+});
