@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Monster Shooter</title>
-<style>body{margin:0;background:#090d20;color:white;font-family:system-ui;text-align:center}h1{color:#7ef4ff}canvas{width:min(96vw,900px);height:auto;background:#111a34;border:2px solid #4b638d;border-radius:15px;touch-action:none}button{padding:14px 32px;background:#7ef4ff;border:0;border-radius:12px;font-weight:bold;font-size:18px}p{color:#b8c9e7}.sound{position:fixed;right:12px;top:12px;z-index:5;padding:9px 13px;font-size:14px;background:#233257;color:#fff;border:1px solid #7ef4ff}.stage{position:relative;width:min(96vw,900px);margin:auto}.stage canvas{width:100%;display:block;box-sizing:border-box}.start{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;white-space:nowrap;box-shadow:0 0 0 999px #060b19aa,0 0 24px #7ef4ff55}.start[hidden]{display:none}@media(max-width:600px){h1{font-size:clamp(20px,6vw,30px);margin:12px 0}h2{font-size:clamp(14px,4vw,19px)}body{padding:0 4px}}</style>
+<style>body{margin:0;background:#090d20;color:white;font-family:system-ui;text-align:center}h1{color:#7ef4ff}canvas{width:min(96vw,900px);height:auto;background:#111a34;border:2px solid #4b638d;border-radius:15px;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}button{padding:14px 32px;background:#7ef4ff;border:0;border-radius:12px;font-weight:bold;font-size:18px}p{color:#b8c9e7}.sound{position:fixed;right:12px;top:12px;z-index:5;padding:9px 13px;font-size:14px;background:#233257;color:#fff;border:1px solid #7ef4ff}.stage{position:relative;width:min(96vw,900px);margin:auto}.stage canvas{width:100%;display:block;box-sizing:border-box}.start{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;white-space:nowrap;box-shadow:0 0 0 999px #060b19aa,0 0 24px #7ef4ff55}.start[hidden]{display:none}@media(max-width:600px){h1{font-size:clamp(20px,6vw,30px);margin:12px 0}h2{font-size:clamp(14px,4vw,19px)}body{padding:0 4px}}</style>
 <button id="sound" class="sound" aria-pressed="true">♫ Звук: вкл</button><h1>👾 MONSTER SHOOTER</h1><h2>Очки: <span id="score">0</span> | Жизни: <span id="life">3</span> | Рекорд: <span id="best">0</span></h2>
 <div class="stage"><canvas id="game" width="900" height="500"></canvas><button class="start" id="start">▶ Играть</button></div><p id="status" role="status">Стреляй по монстрам, пока они не убежали!</p>
 <script>
@@ -9,32 +9,42 @@ const c=document.getElementById('game'),x=c.getContext('2d'),scoreEl=document.ge
 const soundButton=document.getElementById('sound');
 let soundEnabled=true,audioCtx=null,musicTimer=null,musicStep=0;
 const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-const notes=[0,3,7,10,7,3,2,5,0,3,8,7,5,3,-2,2];
-const bass=[0,-5,-7,-5];
+// Original NES-inspired chiptune: melody, counter-melody, bass, and percussion.
+// Tempo rises with elapsed game time, like the monsters' speed.
+const melody=[0,3,7,12,10,7,3,-2,0,3,8,7,5,3,2,-2,0,7,10,15,14,10,7,3,8,7,3,0,-2,2,5,7];
+const harmony=[0,0,7,7,5,5,3,3];
+const bass=[0,-5,-7,-5,0,-3,-5,-7];
+function musicDelay(){return Math.max(105,250-elapsed*2.4)}
 function tone(midi,at,duration,volume,type='square'){
  if(!audioCtx||!soundEnabled)return;
  const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
  osc.type=type;osc.frequency.setValueAtTime(440*Math.pow(2,(midi-69)/12),at);
- gain.gain.setValueAtTime(0.0001,at);gain.gain.exponentialRampToValueAtTime(volume,at+.012);
+ gain.gain.setValueAtTime(.0001,at);
+ gain.gain.exponentialRampToValueAtTime(volume,at+.008);
  gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(at);osc.stop(at+duration+.02);
 }
-function musicBeat(){
+function beat(){
  if(!running||!soundEnabled||!audioCtx)return;
- const at=audioCtx.currentTime+.02,n=musicStep;
- tone(64+notes[n%16],at,.18,.045,'square');
- if(n%2===0)tone(40+bass[Math.floor(n/4)%4],at,.31,.065,'triangle');
- if(n%4===2)tone(76,at,.035,.015,'square');
- musicStep++;
+ const n=musicStep++,at=audioCtx.currentTime+.014,unit=musicDelay()/1000;
+ const lead=melody[n%melody.length];
+ tone(67+lead,at,unit*.82,.042,'square');
+ if(n%2===0)tone(55+harmony[Math.floor(n/2)%harmony.length],at,unit*.95,.019,'square');
+ if(n%4===0)tone(40+bass[Math.floor(n/4)%bass.length],at,unit*3.1,.074,'triangle');
+ if(n%4===2)tone(42+bass[Math.floor(n/4)%bass.length],at,unit*1.5,.05,'triangle');
+ if(n%2===1)tone(83,at,.025,.012,'triangle');
+ if(n%8===7)tone(79,at,.055,.02,'square');
+ musicTimer=setTimeout(beat,musicDelay());
 }
-function stopMusic(){if(musicTimer!==null){clearInterval(musicTimer);musicTimer=null}}
+function stopMusic(){if(musicTimer!==null){clearTimeout(musicTimer);musicTimer=null}}
 function startMusic(){
  stopMusic();
  if(!soundEnabled||!AudioContextClass)return;
  try{
   if(!audioCtx)audioCtx=new AudioContextClass();
-  audioCtx.resume().catch(()=>{});
-  musicStep=0;musicBeat();musicTimer=setInterval(musicBeat,250);
+  const resumed=audioCtx.resume();
+  if(resumed&&typeof resumed.catch==='function')resumed.catch(()=>{});
+  musicStep=0;beat();
  }catch(e){console.warn('Audio unavailable:',e)}
 }
 soundButton.onclick=()=>{
@@ -44,9 +54,47 @@ soundButton.onclick=()=>{
  if(soundEnabled&&running)startMusic();else stopMusic();
 };
 let monsters=[],score=0,lives=3,running=false,last=0,spawn=0,elapsed=0,best=Number(localStorage.getItem('monsterBest')||0);bestEl.textContent=best;
-function add(){monsters.push({x:40+Math.random()*820,y:540,r:22+Math.random()*14,v:75+Math.min(elapsed*2,110),color:['#f75ba9','#6cf6ff','#baff65','#b995ff'][Math.floor(Math.random()*4)]})}
-function draw(){x.clearRect(0,0,900,500);x.strokeStyle='#233257';for(let i=0;i<900;i+=50){x.beginPath();x.moveTo(i,0);x.lineTo(i,500);x.stroke()}for(const m of monsters){x.fillStyle=m.color;x.shadowColor=m.color;x.shadowBlur=18;x.beginPath();x.arc(m.x,m.y,m.r,0,7);x.fill();x.shadowBlur=0;x.fillStyle='#0b1020';x.beginPath();x.arc(m.x-m.r*.3,m.y-5,4,0,7);x.arc(m.x+m.r*.3,m.y-5,4,0,7);x.fill();x.beginPath();x.arc(m.x,m.y+6,7,0,Math.PI);x.strokeStyle='#0b1020';x.lineWidth=3;x.stroke()}}
+// Three original enemy silhouettes based on the submitted pencil sketches.
+// Draw on a tiny 32x32 canvas then upscale without interpolation for crisp pixel art.
+function sprite(kind){
+ const p=document.createElement('canvas');p.width=p.height=32;const g=p.getContext('2d');
+ g.lineWidth=1.7;g.lineJoin='round';g.strokeStyle='#10101f';
+ if(kind===0){ // angry jack-o'-lantern
+  g.fillStyle='#638a2d';g.fillRect(15,2,4,5);
+  g.fillStyle='#e87018';g.beginPath();g.ellipse(16,17,13,12,0,0,Math.PI*2);g.fill();g.stroke();
+  g.strokeStyle='#b83d22';g.lineWidth=1;for(const xx of [10,21]){g.beginPath();g.moveTo(xx,6);g.quadraticCurveTo(xx+(xx<16?-4:4),17,xx,28);g.stroke()}
+  g.fillStyle='#ffe36a';g.strokeStyle='#19101d';g.lineWidth=1.5;
+  g.beginPath();g.moveTo(5,12);g.lineTo(14,15);g.lineTo(11,19);g.lineTo(7,18);g.closePath();g.fill();g.stroke();
+  g.beginPath();g.moveTo(27,12);g.lineTo(18,15);g.lineTo(21,19);g.lineTo(25,18);g.closePath();g.fill();g.stroke();
+  g.beginPath();g.moveTo(7,21);g.quadraticCurveTo(16,32,25,21);g.lineTo(23,26);g.lineTo(18,27);g.lineTo(18,24);g.lineTo(14,24);g.lineTo(14,27);g.lineTo(9,25);g.closePath();g.fill();g.stroke();
+ }else if(kind===1){ // little surprised ghost
+  g.fillStyle='#e7e7ff';g.beginPath();g.moveTo(4,25);g.lineTo(4,13);g.quadraticCurveTo(5,2,16,2);g.quadraticCurveTo(28,2,28,14);g.lineTo(28,25);g.quadraticCurveTo(26,30,23,26);g.quadraticCurveTo(19,33,16,27);g.quadraticCurveTo(11,33,9,27);g.quadraticCurveTo(5,30,4,25);g.fill();g.stroke();
+  g.fillStyle='#2e2946';g.fillRect(11,12,2,7);g.fillRect(20,12,2,7);g.fillRect(16,22,2,4);
+ }else{ // tentacled fanged spirit
+  g.strokeStyle='#aca3e7';g.lineWidth=3.5;g.lineCap='round';
+  for(const [ax,ay,bx,by] of [[10,20,1,27],[13,23,7,31],[17,23,17,31],[20,23,26,31],[23,20,31,27]]){g.beginPath();g.moveTo(ax,ay);g.quadraticCurveTo(bx,ay+2,bx,by);g.stroke()}
+  g.strokeStyle='#10101f';g.lineWidth=1.5;g.fillStyle='#bdb5f4';
+  g.beginPath();g.ellipse(16,14,12,12,0,0,7);g.fill();g.stroke();
+  g.fillStyle='#ffac55';g.fillRect(10,10,2,5);g.fillRect(20,10,2,5);
+  g.fillStyle='#3e114e';g.beginPath();g.ellipse(16,21,8,6,0,0,7);g.fill();g.stroke();
+  g.fillStyle='#fff8d9';for(const xx of [10,14,19,22]){g.beginPath();g.moveTo(xx,17);g.lineTo(xx+3,17);g.lineTo(xx+1,21);g.fill()}
+ }
+ return p;
+}
+const sprites=[sprite(0),sprite(1),sprite(2)];
+function add(){monsters.push({x:40+Math.random()*820,y:540,r:25+Math.random()*11,v:75+Math.min(elapsed*2,110),kind:Math.floor(Math.random()*3)})}
+function draw(){
+ x.clearRect(0,0,900,500);x.strokeStyle='#233257';x.lineWidth=1;
+ for(let i=0;i<900;i+=50){x.beginPath();x.moveTo(i,0);x.lineTo(i,500);x.stroke()}
+ x.imageSmoothingEnabled=false;
+ for(const m of monsters){
+  const img=sprites[m.kind??0],size=m.r*2.5;
+  x.drawImage(img,Math.round(m.x-size/2),Math.round(m.y-size/2),Math.round(size),Math.round(size));
+ }
+}
 function tick(t){if(!running)return;let dt=Math.min((t-last)/1000,.05);last=t;elapsed+=dt;spawn+=dt;if(spawn>Math.max(.42,1.2-elapsed*.01)){spawn=0;add()}for(const m of monsters)m.y-=m.v*dt;let missed=monsters.filter(m=>m.y+m.r<0).length;if(missed){lives=Math.max(0,lives-missed);lifeEl.textContent=lives;monsters=monsters.filter(m=>m.y+m.r>=0)}draw();if(!lives){running=false;stopMusic();statusEl.textContent='Игра окончена! Очки: '+score;start.hidden=false;start.textContent='Играть снова';return}requestAnimationFrame(tick)}
+c.addEventListener('dblclick',e=>e.preventDefault());
+c.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
 c.addEventListener('pointerdown',e=>{if(!running)return;let r=c.getBoundingClientRect(),px=(e.clientX-r.left)*900/r.width,py=(e.clientY-r.top)*500/r.height;for(let i=monsters.length-1;i>=0;i--){let m=monsters[i];if(Math.hypot(m.x-px,m.y-py)<m.r+10){monsters.splice(i,1);score+=10;scoreEl.textContent=score;if(score>best){best=score;bestEl.textContent=best;localStorage.setItem('monsterBest',best)}draw();break}}});
 start.onclick=()=>{score=0;lives=3;elapsed=0;spawn=0;monsters=[];scoreEl.textContent=0;lifeEl.textContent=3;statusEl.textContent='Лови монстров!';start.hidden=true;running=true;startMusic();last=performance.now();requestAnimationFrame(tick)};draw();
 </script>
