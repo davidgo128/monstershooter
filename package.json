@@ -1,0 +1,11 @@
+{
+  "name": "monster-shooter",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ci": "playwright test --reporter=line"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0"
+  }
+}
