@@ -110,3 +110,12 @@ test('muting during game over stops the ending song', async ({ page }) => {
   expect(await page.evaluate(() => endingVoices.length)).toBe(0);
   await expect(page.locator('#sound')).toHaveAttribute('aria-pressed','false');
 });
+
+test('game-over punchline rises into a cheerful major chord', async ({ page }) => {
+  await page.goto('/');
+  const notes = await page.evaluate(() => gameOverNotes.map(([time,pitch]) => ({time,pitch})));
+  const flourish = notes.filter(n => n.time >= 3.35 && n.time < 3.95).map(n => n.pitch);
+  expect(flourish).toEqual([72,76,79]);
+  const finalChord = notes.filter(n => n.time >= 3.95).map(n => n.pitch).sort((a,b) => a-b);
+  expect(finalChord).toEqual([72,76,79,84]);
+});
