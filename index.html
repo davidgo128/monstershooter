@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Monster Shooter</title>
-<style>body{margin:0;background:#090d20;color:white;font-family:system-ui;text-align:center}h1{color:#7ef4ff}canvas{width:min(96vw,900px);height:auto;background:#111a34;border:2px solid #4b638d;border-radius:15px;touch-action:none}button{padding:14px 32px;background:#7ef4ff;border:0;border-radius:12px;font-weight:bold;font-size:18px}p{color:#b8c9e7}</style>
+<style>body{margin:0;background:#090d20;color:white;font-family:system-ui;text-align:center}h1{color:#7ef4ff}canvas{width:min(96vw,900px);height:auto;background:#111a34;border:2px solid #4b638d;border-radius:15px;touch-action:none}button{padding:14px 32px;background:#7ef4ff;border:0;border-radius:12px;font-weight:bold;font-size:18px}p{color:#b8c9e7}.stage{position:relative;width:min(96vw,900px);margin:auto}.stage canvas{width:100%;display:block;box-sizing:border-box}.start{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;white-space:nowrap;box-shadow:0 0 0 999px #060b19aa,0 0 24px #7ef4ff55}.start[hidden]{display:none}@media(max-width:600px){h1{font-size:clamp(20px,6vw,30px);margin:12px 0}h2{font-size:clamp(14px,4vw,19px)}body{padding:0 4px}}</style>
 <h1>👾 MONSTER SHOOTER</h1><h2>Очки: <span id="score">0</span> | Жизни: <span id="life">3</span> | Рекорд: <span id="best">0</span></h2>
-<canvas id="game" width="900" height="500"></canvas><p id="status">Стреляй по монстрам, пока они не убежали!</p><button id="start">Играть</button>
+<div class="stage"><canvas id="game" width="900" height="500"></canvas><button class="start" id="start">▶ Играть</button></div><p id="status" role="status">Стреляй по монстрам, пока они не убежали!</p>
 <script>
 const c=document.getElementById('game'),x=c.getContext('2d'),scoreEl=document.getElementById('score'),lifeEl=document.getElementById('life'),bestEl=document.getElementById('best'),statusEl=document.getElementById('status'),start=document.getElementById('start');
 let monsters=[],score=0,lives=3,running=false,last=0,spawn=0,elapsed=0,best=Number(localStorage.getItem('monsterBest')||0);bestEl.textContent=best;
