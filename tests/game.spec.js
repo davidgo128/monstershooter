@@ -56,3 +56,37 @@ test('page has no uncaught JavaScript errors', async ({ page }) => {
   await page.waitForTimeout(1500);
   expect(errors).toEqual([]);
 });
+
+test('all three sketched monster types are supported', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => sprites.length)).toBe(3);
+  await page.getByRole('button', { name: /играть/i }).click();
+  await page.evaluate(() => {
+    monsters = [];
+    for(let i=0;i<3;i++){add();monsters[i].kind=i;monsters[i].y=250;}
+    draw();
+  });
+  expect(await page.evaluate(() => monsters.map(m => m.kind))).toEqual([0,1,2]);
+});
+
+test('chip music accelerates with game speed and mute works', async ({ page }) => {
+  await page.goto('/');
+  const initial=await page.evaluate(() => musicDelay());
+  await page.getByRole('button', { name: /играть/i }).click();
+  const later=await page.evaluate(() => { elapsed=35; return musicDelay(); });
+  expect(later).toBeLessThan(initial);
+  await page.getByRole('button', { name: /звук/i }).click();
+  await expect(page.locator('#sound')).toHaveAttribute('aria-pressed','false');
+  expect(await page.evaluate(() => musicTimer)).toBeNull();
+});
+
+test('game canvas suppresses double-click zoom and touch action', async ({ page }) => {
+  await page.goto('/');
+  const c=page.locator('#game');
+  expect(await c.evaluate(el => getComputedStyle(el).touchAction)).toBe('manipulation');
+  expect(await c.evaluate(el => {
+    const event=new MouseEvent('dblclick',{bubbles:true,cancelable:true});
+    el.dispatchEvent(event);
+    return event.defaultPrevented;
+  })).toBe(true);
+});
