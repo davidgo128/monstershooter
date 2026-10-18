@@ -45,12 +45,9 @@ function stopEnding(){
  for(const osc of endingVoices){try{osc.stop()}catch(e){}}
  endingVoices=[];
 }
-function playGameOverMusic(){
- stopEnding();
- if(!soundEnabled||!audioCtx)return;
- const startAt=audioCtx.currentTime+.045;
- // [time offset in seconds, MIDI pitch, duration, loudness, waveform]
- const ending=[
+// Original tragic-comic game-over tune, ending with an upward, playful major chord.
+// [time offset in seconds, MIDI pitch, duration, loudness, waveform]
+const gameOverNotes=[
   [0,76,.32,.055,'square'],[.26,72,.3,.052,'square'],
   [.51,69,.36,.055,'square'],[.82,65,.44,.055,'square'],
   [1.20,64,.55,.052,'square'],[1.22,40,.6,.08,'triangle'],
@@ -58,9 +55,17 @@ function playGameOverMusic(){
   [2.05,38,.55,.065,'triangle'],
   [2.58,74,.13,.048,'square'],[2.76,69,.13,.048,'square'],
   [2.95,70,.32,.055,'square'],[2.95,46,.4,.065,'triangle'],
-  [3.35,67,.16,.037,'square'],[3.56,60,.48,.048,'square']
- ];
- for(const [offset,pitch,duration,volume,wave] of ending){
+  // The punchline rises: C5 → E5 → G5 → bright C-major finale.
+  [3.35,72,.13,.045,'square'],[3.53,76,.13,.047,'square'],
+  [3.71,79,.17,.051,'square'],
+  [3.96,72,.55,.028,'triangle'],[3.96,76,.55,.037,'square'],
+  [3.96,79,.55,.037,'square'],[4.04,84,.63,.058,'square']
+];
+function playGameOverMusic(){
+ stopEnding();
+ if(!soundEnabled||!audioCtx)return;
+ const startAt=audioCtx.currentTime+.045;
+ for(const [offset,pitch,duration,volume,wave] of gameOverNotes){
   const osc=tone(pitch,startAt+offset,duration,volume,wave);
   if(osc)endingVoices.push(osc);
  }
